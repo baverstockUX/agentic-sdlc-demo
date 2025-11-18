@@ -5,22 +5,21 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { workflowScenario, getTotalDuration } from '@/lib/workflow-data';
 import Timeline from './Timeline';
 import RoleCard from './RoleCard';
-import { Play, RotateCcw, FastForward, AlertTriangle, ChevronDown, ChevronUp } from 'lucide-react';
+import WorkflowVisualization from './WorkflowVisualization';
+import { Play, RotateCcw, Pause, AlertTriangle, ChevronDown, ChevronUp, ChevronLeft, ChevronRight } from 'lucide-react';
 
-type SimulationState = 'idle' | 'running' | 'completed';
+type SimulationState = 'idle' | 'running' | 'paused' | 'completed';
 
 export default function WorkflowComparison() {
   // Traditional workflow state
   const [tradState, setTradState] = useState<SimulationState>('idle');
   const [tradCurrentStep, setTradCurrentStep] = useState(0);
-  const [tradElapsedTime, setTradElapsedTime] = useState(0);
 
   // Agentic workflow state
   const [agenticState, setAgenticState] = useState<SimulationState>('idle');
   const [agenticCurrentStep, setAgenticCurrentStep] = useState(0);
-  const [agenticElapsedTime, setAgenticElapsedTime] = useState(0);
 
-  const [autoAdvance, setAutoAdvance] = useState(false);
+  const [isAutoPlaying, setIsAutoPlaying] = useState(false);
   const [showTradSteps, setShowTradSteps] = useState(false);
   const [showAgenticSteps, setShowAgenticSteps] = useState(false);
 
@@ -30,63 +29,48 @@ export default function WorkflowComparison() {
   const tradTotalDuration = getTotalDuration(traditionalSteps);
   const agenticTotalDuration = getTotalDuration(agenticSteps);
 
-  // Timer for traditional workflow
+  // Auto-play timer - advances both workflows simultaneously
   useEffect(() => {
-    if (tradState !== 'running') return;
+    if (!isAutoPlaying) return;
 
     const interval = setInterval(() => {
-      setTradElapsedTime(prev => {
-        const newTime = prev + 1;
+      // Advance traditional if not completed
+      if (tradCurrentStep < traditionalSteps.length - 1) {
+        setTradCurrentStep(prev => prev + 1);
+      } else if (tradState !== 'completed') {
+        setTradState('completed');
+      }
 
-        // Check if we should advance to next step
-        const currentStep = traditionalSteps[tradCurrentStep];
-        if (currentStep && newTime >= currentStep.duration) {
-          if (tradCurrentStep < traditionalSteps.length - 1) {
-            setTradCurrentStep(prev => prev + 1);
-            return 0; // Reset timer for next step
-          } else {
-            setTradState('completed');
-            return newTime;
-          }
-        }
+      // Advance agentic if not completed
+      if (agenticCurrentStep < agenticSteps.length - 1) {
+        setAgenticCurrentStep(prev => prev + 1);
+      } else if (agenticState !== 'completed') {
+        setAgenticState('completed');
+      }
 
-        return newTime;
-      });
-    }, 1000);
-
-    return () => clearInterval(interval);
-  }, [tradState, tradCurrentStep, traditionalSteps]);
-
-  // Timer for agentic workflow
-  useEffect(() => {
-    if (agenticState !== 'running') return;
-
-    const interval = setInterval(() => {
-      setAgenticElapsedTime(prev => {
-        const newTime = prev + 1;
-
-        const currentStep = agenticSteps[agenticCurrentStep];
-        if (currentStep && newTime >= currentStep.duration) {
-          if (agenticCurrentStep < agenticSteps.length - 1) {
-            setAgenticCurrentStep(prev => prev + 1);
-            return 0;
-          } else {
-            setAgenticState('completed');
-            return newTime;
-          }
-        }
-
-        return newTime;
-      });
-    }, 1000);
+      // Stop auto-play when both completed
+      if (tradCurrentStep >= traditionalSteps.length - 1 && agenticCurrentStep >= agenticSteps.length - 1) {
+        setIsAutoPlaying(false);
+      }
+    }, 1500); // Advance every 1.5 seconds
 
     return () => clearInterval(interval);
-  }, [agenticState, agenticCurrentStep, agenticSteps]);
+  }, [isAutoPlaying, tradCurrentStep, agenticCurrentStep, traditionalSteps.length, agenticSteps.length, tradState, agenticState]);
 
   const startSimulation = () => {
-    setTradState('running');
-    setAgenticState('running');
-    setAutoAdvance(true);
+    if (tradState === 'idle') {
+      setTradState('running');
+      setTradCurrentStep(0);
+    }
+    if (agenticState === 'idle') {
+      setAgenticState('running');
+      setAgenticCurrentStep(0);
+    }
+    setIsAutoPlaying(true);
+  };
+
+  const pauseSimulation = () => {
+    setIsAutoPlaying(false);
   };
 
   const resetSimulation = () => {
@@ -94,26 +78,40 @@ export default function WorkflowComparison() {
     setAgenticState('idle');
     setTradCurrentStep(0);
     setAgenticCurrentStep(0);
-    setTradElapsedTime(0);
-    setAgenticElapsedTime(0);
-    setAutoAdvance(false);
+    setIsAutoPlaying(false);
+    setShowTradSteps(false);
+    setShowAgenticSteps(false);
   };
 
-  const advanceTraditional = () => {
+  const tradNext = () => {
+    if (tradState === 'idle') setTradState('running');
     if (tradCurrentStep < traditionalSteps.length - 1) {
       setTradCurrentStep(prev => prev + 1);
-      setTradElapsedTime(0);
     } else {
       setTradState('completed');
     }
   };
 
-  const advanceAgentic = () => {
+  const tradPrev = () => {
+    if (tradCurrentStep > 0) {
+      setTradCurrentStep(prev => prev - 1);
+      if (tradState === 'completed') setTradState('running');
+    }
+  };
+
+  const agenticNext = () => {
+    if (agenticState === 'idle') setAgenticState('running');
     if (agenticCurrentStep < agenticSteps.length - 1) {
       setAgenticCurrentStep(prev => prev + 1);
-      setAgenticElapsedTime(0);
     } else {
       setAgenticState('completed');
+    }
+  };
+
+  const agenticPrev = () => {
+    if (agenticCurrentStep > 0) {
+      setAgenticCurrentStep(prev => prev - 1);
+      if (agenticState === 'completed') setAgenticState('running');
     }
   };
 
@@ -138,13 +136,23 @@ export default function WorkflowComparison() {
 
         {/* Controls */}
         <div className="flex justify-center gap-4">
-          {(tradState === 'idle' || agenticState === 'idle') && (
+          {!isAutoPlaying && tradState !== 'completed' && agenticState !== 'completed' && (
             <button
               onClick={startSimulation}
               className="flex items-center gap-2 px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
             >
               <Play className="w-5 h-5" />
-              Start Simulation
+              {tradState === 'idle' ? 'Start Auto-Play' : 'Resume Auto-Play'}
+            </button>
+          )}
+
+          {isAutoPlaying && (
+            <button
+              onClick={pauseSimulation}
+              className="flex items-center gap-2 px-6 py-3 bg-orange-600 text-white rounded-lg hover:bg-orange-700 transition-colors"
+            >
+              <Pause className="w-5 h-5" />
+              Pause
             </button>
           )}
 
@@ -157,16 +165,10 @@ export default function WorkflowComparison() {
               Reset
             </button>
           )}
+        </div>
 
-          {!autoAdvance && tradState === 'running' && (
-            <button
-              onClick={() => setAutoAdvance(true)}
-              className="flex items-center gap-2 px-6 py-3 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors"
-            >
-              <FastForward className="w-5 h-5" />
-              Auto-Advance
-            </button>
-          )}
+        <div className="text-center text-sm text-gray-600">
+          Use arrow buttons below each workflow to step through manually, or use Auto-Play to run both simultaneously.
         </div>
 
         {/* Comparison Grid */}
@@ -181,24 +183,47 @@ export default function WorkflowComparison() {
                 </div>
               </div>
 
-              {tradState !== 'idle' && currentTradStep && (
-                <Timeline
-                  currentRole={currentTradStep.role}
-                  currentStep={tradCurrentStep + 1}
-                  totalSteps={traditionalSteps.length}
-                  elapsedTime={tradElapsedTime}
-                />
+              <WorkflowVisualization
+                type="traditional"
+                currentRole={tradState !== 'idle' && currentTradStep ? currentTradStep.role : undefined}
+              />
+
+              {/* Step Counter */}
+              {tradState !== 'idle' && tradState !== 'completed' && (
+                <div className="text-center text-sm text-gray-600 mt-3">
+                  Step {tradCurrentStep + 1} of {traditionalSteps.length}
+                </div>
               )}
             </div>
 
+            {/* Manual Navigation Controls */}
+            {tradState !== 'idle' && tradState !== 'completed' && (
+              <div className="flex justify-center gap-3">
+                <button
+                  onClick={tradPrev}
+                  disabled={tradCurrentStep === 0}
+                  className="flex items-center gap-1 px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+                >
+                  <ChevronLeft className="w-4 h-4" />
+                  Previous
+                </button>
+                <button
+                  onClick={tradNext}
+                  className="flex items-center gap-1 px-4 py-2 bg-blue-100 text-blue-700 rounded-lg hover:bg-blue-200 transition-colors"
+                >
+                  Next
+                  <ChevronRight className="w-4 h-4" />
+                </button>
+              </div>
+            )}
+
             <div className="space-y-3">
               <AnimatePresence mode="wait">
-                {tradState === 'running' && currentTradStep && (
+                {tradState !== 'idle' && tradState !== 'completed' && currentTradStep && (
                   <RoleCard
                     key={currentTradStep.id}
                     step={currentTradStep}
                     isActive={true}
-                    onClick={tradState === 'running' && !autoAdvance ? advanceTraditional : undefined}
                   />
                 )}
               </AnimatePresence>
@@ -270,24 +295,47 @@ export default function WorkflowComparison() {
                 </div>
               </div>
 
-              {agenticState !== 'idle' && currentAgenticStep && (
-                <Timeline
-                  currentRole={currentAgenticStep.role}
-                  currentStep={agenticCurrentStep + 1}
-                  totalSteps={agenticSteps.length}
-                  elapsedTime={agenticElapsedTime}
-                />
+              <WorkflowVisualization
+                type="agentic"
+                currentRole={agenticState !== 'idle' && currentAgenticStep ? currentAgenticStep.role : undefined}
+              />
+
+              {/* Step Counter */}
+              {agenticState !== 'idle' && agenticState !== 'completed' && (
+                <div className="text-center text-sm text-gray-600 mt-3">
+                  Step {agenticCurrentStep + 1} of {agenticSteps.length}
+                </div>
               )}
             </div>
 
+            {/* Manual Navigation Controls */}
+            {agenticState !== 'idle' && agenticState !== 'completed' && (
+              <div className="flex justify-center gap-3">
+                <button
+                  onClick={agenticPrev}
+                  disabled={agenticCurrentStep === 0}
+                  className="flex items-center gap-1 px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+                >
+                  <ChevronLeft className="w-4 h-4" />
+                  Previous
+                </button>
+                <button
+                  onClick={agenticNext}
+                  className="flex items-center gap-1 px-4 py-2 bg-green-100 text-green-700 rounded-lg hover:bg-green-200 transition-colors"
+                >
+                  Next
+                  <ChevronRight className="w-4 h-4" />
+                </button>
+              </div>
+            )}
+
             <div className="space-y-3">
               <AnimatePresence mode="wait">
-                {agenticState === 'running' && currentAgenticStep && (
+                {agenticState !== 'idle' && agenticState !== 'completed' && currentAgenticStep && (
                   <RoleCard
                     key={currentAgenticStep.id}
                     step={currentAgenticStep}
                     isActive={true}
-                    onClick={agenticState === 'running' && !autoAdvance ? advanceAgentic : undefined}
                   />
                 )}
               </AnimatePresence>
