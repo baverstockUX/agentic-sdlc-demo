@@ -14,10 +14,12 @@ export default function WorkflowComparison() {
   // Traditional workflow state
   const [tradState, setTradState] = useState<SimulationState>('idle');
   const [tradCurrentStep, setTradCurrentStep] = useState(0);
+  const [tradElapsedTime, setTradElapsedTime] = useState(0);
 
   // Agentic workflow state
   const [agenticState, setAgenticState] = useState<SimulationState>('idle');
   const [agenticCurrentStep, setAgenticCurrentStep] = useState(0);
+  const [agenticElapsedTime, setAgenticElapsedTime] = useState(0);
 
   const [isAutoPlaying, setIsAutoPlaying] = useState(false);
   const [showTradSteps, setShowTradSteps] = useState(false);
@@ -29,33 +31,62 @@ export default function WorkflowComparison() {
   const tradTotalDuration = getTotalDuration(traditionalSteps);
   const agenticTotalDuration = getTotalDuration(agenticSteps);
 
-  // Auto-play timer - advances both workflows simultaneously
+  // Auto-play timer for Traditional workflow
   useEffect(() => {
-    if (!isAutoPlaying) return;
+    if (!isAutoPlaying || tradState !== 'running') return;
 
     const interval = setInterval(() => {
-      // Advance traditional if not completed
-      if (tradCurrentStep < traditionalSteps.length - 1) {
-        setTradCurrentStep(prev => prev + 1);
-      } else if (tradState !== 'completed') {
-        setTradState('completed');
-      }
+      setTradElapsedTime(prev => {
+        const newTime = prev + 1;
+        const currentStep = traditionalSteps[tradCurrentStep];
 
-      // Advance agentic if not completed
-      if (agenticCurrentStep < agenticSteps.length - 1) {
-        setAgenticCurrentStep(prev => prev + 1);
-      } else if (agenticState !== 'completed') {
-        setAgenticState('completed');
-      }
-
-      // Stop auto-play when both completed
-      if (tradCurrentStep >= traditionalSteps.length - 1 && agenticCurrentStep >= agenticSteps.length - 1) {
-        setIsAutoPlaying(false);
-      }
-    }, 1500); // Advance every 1.5 seconds
+        if (currentStep && newTime >= currentStep.duration) {
+          if (tradCurrentStep < traditionalSteps.length - 1) {
+            setTradCurrentStep(prev => prev + 1);
+            return 0;
+          } else {
+            setTradState('completed');
+            return newTime;
+          }
+        }
+        return newTime;
+      });
+    }, 1000);
 
     return () => clearInterval(interval);
-  }, [isAutoPlaying, tradCurrentStep, agenticCurrentStep, traditionalSteps.length, agenticSteps.length, tradState, agenticState]);
+  }, [isAutoPlaying, tradState, tradCurrentStep, traditionalSteps]);
+
+  // Auto-play timer for Agentic workflow
+  useEffect(() => {
+    if (!isAutoPlaying || agenticState !== 'running') return;
+
+    const interval = setInterval(() => {
+      setAgenticElapsedTime(prev => {
+        const newTime = prev + 1;
+        const currentStep = agenticSteps[agenticCurrentStep];
+
+        if (currentStep && newTime >= currentStep.duration) {
+          if (agenticCurrentStep < agenticSteps.length - 1) {
+            setAgenticCurrentStep(prev => prev + 1);
+            return 0;
+          } else {
+            setAgenticState('completed');
+            return newTime;
+          }
+        }
+        return newTime;
+      });
+    }, 1000);
+
+    return () => clearInterval(interval);
+  }, [isAutoPlaying, agenticState, agenticCurrentStep, agenticSteps]);
+
+  // Stop auto-play when both completed
+  useEffect(() => {
+    if (tradState === 'completed' && agenticState === 'completed') {
+      setIsAutoPlaying(false);
+    }
+  }, [tradState, agenticState]);
 
   const startSimulation = () => {
     if (tradState === 'idle') {
@@ -78,6 +109,8 @@ export default function WorkflowComparison() {
     setAgenticState('idle');
     setTradCurrentStep(0);
     setAgenticCurrentStep(0);
+    setTradElapsedTime(0);
+    setAgenticElapsedTime(0);
     setIsAutoPlaying(false);
     setShowTradSteps(false);
     setShowAgenticSteps(false);
@@ -188,10 +221,19 @@ export default function WorkflowComparison() {
                 currentRole={tradState !== 'idle' && currentTradStep ? currentTradStep.role : undefined}
               />
 
-              {/* Step Counter */}
-              {tradState !== 'idle' && tradState !== 'completed' && (
-                <div className="text-center text-sm text-gray-600 mt-3">
-                  Step {tradCurrentStep + 1} of {traditionalSteps.length}
+              {/* Step Counter and Progress */}
+              {tradState !== 'idle' && tradState !== 'completed' && currentTradStep && (
+                <div className="mt-3 space-y-2">
+                  <div className="flex items-center justify-between text-sm text-gray-600">
+                    <span>Step {tradCurrentStep + 1} of {traditionalSteps.length}</span>
+                    <span className="font-mono">{tradElapsedTime}s / {currentTradStep.duration}s</span>
+                  </div>
+                  <div className="h-2 bg-gray-200 rounded-full overflow-hidden">
+                    <div
+                      className="h-full bg-blue-500 transition-all duration-300"
+                      style={{ width: `${(tradElapsedTime / currentTradStep.duration) * 100}%` }}
+                    />
+                  </div>
                 </div>
               )}
             </div>
@@ -300,10 +342,19 @@ export default function WorkflowComparison() {
                 currentRole={agenticState !== 'idle' && currentAgenticStep ? currentAgenticStep.role : undefined}
               />
 
-              {/* Step Counter */}
-              {agenticState !== 'idle' && agenticState !== 'completed' && (
-                <div className="text-center text-sm text-gray-600 mt-3">
-                  Step {agenticCurrentStep + 1} of {agenticSteps.length}
+              {/* Step Counter and Progress */}
+              {agenticState !== 'idle' && agenticState !== 'completed' && currentAgenticStep && (
+                <div className="mt-3 space-y-2">
+                  <div className="flex items-center justify-between text-sm text-gray-600">
+                    <span>Step {agenticCurrentStep + 1} of {agenticSteps.length}</span>
+                    <span className="font-mono">{agenticElapsedTime}s / {currentAgenticStep.duration}s</span>
+                  </div>
+                  <div className="h-2 bg-gray-200 rounded-full overflow-hidden">
+                    <div
+                      className="h-full bg-green-500 transition-all duration-300"
+                      style={{ width: `${(agenticElapsedTime / currentAgenticStep.duration) * 100}%` }}
+                    />
+                  </div>
                 </div>
               )}
             </div>
