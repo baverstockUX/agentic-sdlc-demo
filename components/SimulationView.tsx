@@ -6,11 +6,16 @@ import { workflowScenario, getTotalDuration } from '@/lib/workflow-data';
 import Timeline from './Timeline';
 import RoleCard from './RoleCard';
 import WorkflowVisualization from './WorkflowVisualization';
-import { Play, RotateCcw, Pause, AlertTriangle, ChevronDown, ChevronUp, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Play, RotateCcw, Pause, AlertTriangle, ChevronDown, ChevronUp } from 'lucide-react';
 
 type SimulationState = 'idle' | 'running' | 'paused' | 'completed';
+type Speed = 0.5 | 1 | 2;
 
-export default function WorkflowComparison() {
+interface SimulationViewProps {
+  onSwitchToComparison?: () => void;
+}
+
+export default function SimulationView({ onSwitchToComparison }: SimulationViewProps) {
   // Traditional workflow state
   const [tradState, setTradState] = useState<SimulationState>('idle');
   const [tradCurrentStep, setTradCurrentStep] = useState(0);
@@ -22,6 +27,7 @@ export default function WorkflowComparison() {
   const [agenticElapsedTime, setAgenticElapsedTime] = useState(0);
 
   const [isAutoPlaying, setIsAutoPlaying] = useState(false);
+  const [speed, setSpeed] = useState<Speed>(1);
   const [showTradSteps, setShowTradSteps] = useState(false);
   const [showAgenticSteps, setShowAgenticSteps] = useState(false);
 
@@ -37,7 +43,7 @@ export default function WorkflowComparison() {
 
     const interval = setInterval(() => {
       setTradElapsedTime(prev => {
-        const newTime = prev + 1;
+        const newTime = prev + speed;
         const currentStep = traditionalSteps[tradCurrentStep];
 
         if (currentStep && newTime >= currentStep.duration) {
@@ -54,7 +60,7 @@ export default function WorkflowComparison() {
     }, 1000);
 
     return () => clearInterval(interval);
-  }, [isAutoPlaying, tradState, tradCurrentStep, traditionalSteps]);
+  }, [isAutoPlaying, tradState, tradCurrentStep, traditionalSteps, speed]);
 
   // Auto-play timer for Agentic workflow
   useEffect(() => {
@@ -62,7 +68,7 @@ export default function WorkflowComparison() {
 
     const interval = setInterval(() => {
       setAgenticElapsedTime(prev => {
-        const newTime = prev + 1;
+        const newTime = prev + speed;
         const currentStep = agenticSteps[agenticCurrentStep];
 
         if (currentStep && newTime >= currentStep.duration) {
@@ -79,7 +85,7 @@ export default function WorkflowComparison() {
     }, 1000);
 
     return () => clearInterval(interval);
-  }, [isAutoPlaying, agenticState, agenticCurrentStep, agenticSteps]);
+  }, [isAutoPlaying, agenticState, agenticCurrentStep, agenticSteps, speed]);
 
   // Stop auto-play when both completed
   useEffect(() => {
@@ -116,38 +122,6 @@ export default function WorkflowComparison() {
     setShowAgenticSteps(false);
   };
 
-  const tradNext = () => {
-    if (tradState === 'idle') setTradState('running');
-    if (tradCurrentStep < traditionalSteps.length - 1) {
-      setTradCurrentStep(prev => prev + 1);
-    } else {
-      setTradState('completed');
-    }
-  };
-
-  const tradPrev = () => {
-    if (tradCurrentStep > 0) {
-      setTradCurrentStep(prev => prev - 1);
-      if (tradState === 'completed') setTradState('running');
-    }
-  };
-
-  const agenticNext = () => {
-    if (agenticState === 'idle') setAgenticState('running');
-    if (agenticCurrentStep < agenticSteps.length - 1) {
-      setAgenticCurrentStep(prev => prev + 1);
-    } else {
-      setAgenticState('completed');
-    }
-  };
-
-  const agenticPrev = () => {
-    if (agenticCurrentStep > 0) {
-      setAgenticCurrentStep(prev => prev - 1);
-      if (agenticState === 'completed') setAgenticState('running');
-    }
-  };
-
   const currentTradStep = traditionalSteps[tradCurrentStep];
   const currentAgenticStep = agenticSteps[agenticCurrentStep];
 
@@ -163,19 +137,18 @@ export default function WorkflowComparison() {
           </h1>
           <p className="text-gray-600 max-w-2xl mx-auto">
             Watch how the same feature - adding user authentication - flows through traditional vs agentic workflows.
-            Click steps to advance or use auto-play.
           </p>
         </div>
 
         {/* Controls */}
-        <div className="flex justify-center gap-4">
+        <div className="flex justify-center items-center gap-4 flex-wrap">
           {!isAutoPlaying && tradState !== 'completed' && agenticState !== 'completed' && (
             <button
               onClick={startSimulation}
               className="flex items-center gap-2 px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
             >
               <Play className="w-5 h-5" />
-              {tradState === 'idle' ? 'Start Auto-Play' : 'Resume Auto-Play'}
+              {tradState === 'idle' ? 'Start Simulation' : 'Resume'}
             </button>
           )}
 
@@ -198,10 +171,21 @@ export default function WorkflowComparison() {
               Reset
             </button>
           )}
-        </div>
 
-        <div className="text-center text-sm text-gray-600">
-          Use arrow buttons below each workflow to step through manually, or use Auto-Play to run both simultaneously.
+          {/* Speed Control */}
+          <div className="flex items-center gap-2">
+            <span className="text-sm text-gray-600">Speed:</span>
+            <select
+              value={speed}
+              onChange={(e) => setSpeed(Number(e.target.value) as Speed)}
+              disabled={isAutoPlaying}
+              className="px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              <option value={0.5}>0.5x</option>
+              <option value={1}>1x</option>
+              <option value={2}>2x</option>
+            </select>
+          </div>
         </div>
 
         {/* Comparison Grid */}
@@ -237,27 +221,6 @@ export default function WorkflowComparison() {
                 </div>
               )}
             </div>
-
-            {/* Manual Navigation Controls */}
-            {tradState !== 'idle' && tradState !== 'completed' && (
-              <div className="flex justify-center gap-3">
-                <button
-                  onClick={tradPrev}
-                  disabled={tradCurrentStep === 0}
-                  className="flex items-center gap-1 px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
-                >
-                  <ChevronLeft className="w-4 h-4" />
-                  Previous
-                </button>
-                <button
-                  onClick={tradNext}
-                  className="flex items-center gap-1 px-4 py-2 bg-blue-100 text-blue-700 rounded-lg hover:bg-blue-200 transition-colors"
-                >
-                  Next
-                  <ChevronRight className="w-4 h-4" />
-                </button>
-              </div>
-            )}
 
             <div className="space-y-3">
               <AnimatePresence mode="wait">
@@ -358,27 +321,6 @@ export default function WorkflowComparison() {
                 </div>
               )}
             </div>
-
-            {/* Manual Navigation Controls */}
-            {agenticState !== 'idle' && agenticState !== 'completed' && (
-              <div className="flex justify-center gap-3">
-                <button
-                  onClick={agenticPrev}
-                  disabled={agenticCurrentStep === 0}
-                  className="flex items-center gap-1 px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
-                >
-                  <ChevronLeft className="w-4 h-4" />
-                  Previous
-                </button>
-                <button
-                  onClick={agenticNext}
-                  className="flex items-center gap-1 px-4 py-2 bg-green-100 text-green-700 rounded-lg hover:bg-green-200 transition-colors"
-                >
-                  Next
-                  <ChevronRight className="w-4 h-4" />
-                </button>
-              </div>
-            )}
 
             <div className="space-y-3">
               <AnimatePresence mode="wait">
