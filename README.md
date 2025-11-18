@@ -1,36 +1,88 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Agentic SDLC Interactive Prototype
 
-## Getting Started
+An interactive demonstration showing the transformation from Traditional to Agentic Software Development Lifecycle workflows.
 
-First, run the development server:
+## What This Demonstrates
+
+This prototype shows a side-by-side comparison of building the same feature (user authentication) through:
+
+- **Traditional SDLC**: Sequential handoffs between Product, Design, and Engineering
+- **Agentic SDLC**: Asynchronous artifact generation with human-in-the-loop validation
+
+## Key Features
+
+### Interactive Walkthrough
+- Click through each step to see the transformation
+- Auto-advance mode for continuous playback
+- Real-time timer showing time compression (~4.6x faster)
+
+### Side-by-Side Comparison
+- Traditional workflow (left): 17 sequential steps
+- Agentic workflow (right): 14 parallelized steps
+- Visual role indicators (Product/Design/Engineering)
+- Artifact generation displays
+
+### Educational Summary
+- Shows what changes: async workflows, parallel execution, human curation
+- Shows what doesn't change: politics, unclear requirements, technical debt
+- Highlights the "hidden failure mode": 10x faster at building the wrong thing
+
+## Running the Demo
 
 ```bash
+npm install
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Open [http://localhost:3000](http://localhost:3000) in your browser.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## Tech Stack
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+- Next.js 14+ (React, App Router, TypeScript)
+- Tailwind CSS for styling
+- Framer Motion for animations
+- Lucide Icons
 
-## Learn More
+## How It Works
 
-To learn more about Next.js, take a look at the following resources:
+The simulation demonstrates:
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+1. **Product Phase**:
+   - Traditional: Manual research, PRD writing, review cycles
+   - Agentic: Conversational capture, automated discovery, AI-generated options
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+2. **Design Phase**:
+   - Traditional: Sketches → wireframes → mockups → reviews
+   - Agentic: AI generates variations, designer curates and validates
+
+3. **Engineering Phase**:
+   - Traditional: Sequential implementation, manual testing, code review
+   - Agentic: Parallel code generation, architecture-focused review, self-healing CI
+
+## Key Takeaways
+
+The prototype emphasizes that the real transformation is:
+
+- From execution to curation
+- From sequential to parallel
+- From "can we build it?" to "should we build it?"
+- Product strategy becomes the new bottleneck, not engineering capacity
+
+## File Structure
+
+```
+/
+├── app/
+│   ├── page.tsx                    # Main entry point
+│   └── globals.css                 # Global styles
+├── components/
+│   ├── WorkflowComparison.tsx      # Main orchestration component
+│   ├── Timeline.tsx                # Progress indicator
+│   └── RoleCard.tsx                # Step display card
+└── lib/
+    └── workflow-data.ts            # Scenario data and types
+```
 
 ## Deploy on Vercel
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme).
